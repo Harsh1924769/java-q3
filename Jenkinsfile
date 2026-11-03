@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
 
@@ -51,5 +52,41 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([
+                    file(
+                        credentialsId: 'kubeconfig-credentials',
+                        variable: 'KUBECONFIG'
+                    )
+                ]) {
+                    sh '''
+                        kubectl apply -f k8s/deployment.yml
+                        kubectl apply -f k8s/service.yml
+                    '''
+                }
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                withCredentials([
+                    file(
+                        credentialsId: 'kubeconfig-credentials',
+                        variable: 'KUBECONFIG'
+                    )
+                ]) {
+                    sh '''
+                        kubectl rollout status deployment/java-q3-deployment --timeout=120s
+
+                        kubectl get deployments
+                        kubectl get pods -o wide
+                        kubectl get services
+                    '''
+                }
+            }
+        }
     }
 }
+
